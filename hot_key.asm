@@ -5,20 +5,31 @@ org 100h
 
 locals @@
 
-NumHexArray      db     4 DUP(0)
+HexNumArray      db     4 DUP(0)
 
-TableWidth      equ           11
-TableHeight     equ           18
+TableWidth      equ          11d
+TableHeight     equ          18d
 TableColour     equ          4ch
-TableCode       equ            2
+TableCode       equ           2d
 Hotkey          equ          11d
 IntCellSize     equ           4d
 RegisterCount   equ          12d
-HotkeyPressed   equ          '*'
-HotkeyUnPressed equ          '&'
-LinePos			equ            3
+HotkeyPressed   equ           '*'
+HotkeyUnPressed equ           '&'
+LinePos			equ           3d
 RowPos 			equ (80 - 7) + 1                                ; 7 - width of the functional part
 
+;-------------------------------------------------------------------------------
+;This macro remembers the address of the standart handler and replaces it with
+;a new one.
+;
+;Used registers:    es - the segment where the interruption data is.
+;                   ax - the address in which the interruption data is stored.
+;                   cs - programm segment.
+;
+;Input registers:   es
+;
+;Return value:      OldHandler - full address of the standart handler.
 ;-------------------------------------------------------------------------------
 .ExchangeInt    macro IntNum, NewHandler, OldHandler
 
@@ -31,7 +42,7 @@ RowPos 			equ (80 - 7) + 1                                ; 7 - width of the fun
                 mov word ptr cs:OldHandler + 2, ax
 
                 push cs
-                pop ax
+                pop  ax
 
                 mov es:[IntNum * IntCellSize + 2], ax
 
@@ -52,12 +63,12 @@ RowPos 			equ (80 - 7) + 1                                ; 7 - width of the fun
 .SetNumSym      macro HexPart, SetSym
 
                 push dx
-                xor dl, dl
+                xor  dl, dl
 
-                mov al, dh
+                mov  al, dh
                 push dx                                         ; сохраняем значение dh
-                mov dh, 10
-                div dh                                          ; теперь в al лежит десятичная часть,
+                mov  dh, 10
+                div  dh                                         ; теперь в al лежит десятичная часть,
                                                                 ; а в ah единичная.
                 pop dx
                 cmp dh, 10
@@ -122,6 +133,7 @@ Start:      cli
 jmp ProgEnd
 
 include ./u_test.asm
+
 ;===============================================================================
 ;This function replaces the original handler, and with each tick of the timer
 ;prints the register value in the frame.
@@ -139,19 +151,19 @@ include ./u_test.asm
 Int08NewHandler     proc
 
                     push bx
-                    lea bx, HotkeyPass
-                    cmp byte ptr cs:[bx], HotkeyUnPressed
+                    lea  bx, HotkeyPass
+                    cmp  byte ptr cs:[bx], HotkeyUnPressed
                     je @@SysIntHandler
 
                     push ss es ds sp bp di si dx cx bx ax
                     push cs ss es ds sp bp di si dx cx bx ax    ; для получения функцией информации о них
 
                     mov cx, RegisterCount                       ; 13 проходов в цикле.
-                    lea si, NumHexArray
+                    lea si, HexNumArray
                     .SetVidMemAddr
                     mov dx, (80 * 2) * LinePos + RowPos + 3 * 2
 
-@@RegValPrinting:   pop bx
+@@RegValPrinting:   pop  bx
                     push cx                                     ; сохраняем значение счетчика.
                     push dx
 
@@ -176,9 +188,9 @@ Int08NewHandler     proc
                     loop @@RegValPrinting
 
                     pop ax bx cx dx si di bp sp ds es ss
-
+;________________________________
                     call UnitTest
-
+;________________________________
 @@SysIntHandler:    pop bx
                     db 0EAh
                     Int08SysHandler dd 0
@@ -206,7 +218,7 @@ Int08NewHandler     proc
 Int09NewHandler proc
                 push ax
 
-                in al,     60h                                  ; берем из порта 60 значение символа клавиатуры
+                in  al,    60h                                  ; берем из порта 60 значение символа клавиатуры
                 cmp al, Hotkey                                  ; hot key - 0
 
                 je @@PrintRegs
@@ -221,14 +233,14 @@ Int09End:       pop ax
                 cmp byte ptr cs:[bx], HotkeyPressed
                 je @@IntEnd
 
-                mov byte ptr cs:[bx], HotkeyPressed
+                mov  byte ptr cs:[bx], HotkeyPressed
 
                 push ax bx cx dx bp si di ds es
 
-                mov dl, TableWidth
-		        mov dh, TableHeight
-		        mov ch, TableColour
-		        mov cl, TableCode
+                mov  dl, TableWidth
+		        mov  dh, TableHeight
+		        mov  ch, TableColour
+		        mov  cl, TableCode
 
                 push cs
                 pop ds
@@ -243,8 +255,8 @@ Int09End:       pop ax
 
                 call PrintRow                                   ; печатает названия всех регистров в столбик
 
-                in al, 61h
-                or al, 80h
+                in  al, 61h
+                or  al, 80h
                 out 61h, al
                 and al, not 80h
                 out 61h, al
@@ -256,7 +268,7 @@ Int09End:       pop ax
 
                 jmp Int09End
 
-                HotkeyPass db HotkeyUnPressed
+                HotkeyPass db            HotkeyUnPressed
                 RegsNames  db 'axbxcxdxsidibpspdsessscs$'
 
                 endp
@@ -273,7 +285,7 @@ Int09End:       pop ax
 ;
 ;Input registers:   bx - the register whose value needs to be converted.
 ;
-;Return value:      NumHexArray string with the value of the register.
+;Return value:      HexNumArray string with the value of the register.
 ;                   cx
 ;                   dx
 ;                   bx
@@ -284,34 +296,34 @@ SetHexNumStr    proc
                 xor dx, dx
 
                 push bx                                         ; сохраняем начальное значение регистра.
-                xor bh, bh                                      ; сохраняем bl
+                xor  bh, bh                                     ; сохраняем bl
                 push bx                                         ; работаем с нижними битами.
 
                 shl bl, 4                                       ; xxxx1110 --> 00001110
                 shr bl, 4                                       ; получили нижние 4 бита bl.
 
                 mov cl, bl
-;___________________________________________
+;___________________________
                 pop bx
                 shr bl, 4                                       ; получили верхние 4 бита в bl
                                                                 ; 1110xxxx --> 00001110
                 mov ch, bl
-;___________________________________________
-                pop bx
-                xor bl, bl
+;___________________________
+                pop  bx
+                xor  bl, bl
                 push bx                                         ; save bh
 
                 shl bh, 4
                 shr bh, 4                                       ; получили нижние 4 бита верхнего регистра
 
                 mov dl, bh
-;___________________________________________
+;___________________________
                 pop bx                                          ; pop bh
 
                 shr bh, 4                                       ; получили верхние 4 бита верхнего регистра
 
                 mov dh, bh
-;___________________________________________
+;___________________________
 
                 call ConvBinToHexNumStr                         ; после выполнения в массиве лежит число
                                                                 ; в строчном виде.
@@ -332,7 +344,7 @@ SetHexNumStr    proc
 ;                   dl - four lower bits of the bh register.
 ;                   dh - top four bits of the bh register.
 ;
-;Return value:      NumHexArray string with the value of the register.
+;Return value:      HexNumArray string with the value of the register.
 ;                   ax
 ;                   bx
 ;-------------------------------------------------------------------------------
@@ -341,7 +353,7 @@ ConvBinToHexNumStr  proc
                     xor ax, ax
                     xor bx, bx
 
-                    lea bx, NumHexArray                         ; в bx нулевая ячейка массива
+                    lea bx, HexNumArray                         ; в bx нулевая ячейка массива
 
                     .SetNumSym HexFirstDig, SetFirstDigSym
 
